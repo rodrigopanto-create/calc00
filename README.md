@@ -26,7 +26,6 @@ Interfaz gráfica impulsada por **`egui`** / **`eframe`**, con un motor matemát
 
 Asegúrate de tener instalado [Rust y Cargo](https://rustup.rs/).
 
-```bash
 # Clonar el repositorio
 git clone [https://github.com/rodrigopanto-create/calc00.git](https://github.com/rodrigopanto-create/calc00.git)
 cd calc00
