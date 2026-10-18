@@ -1,0 +1,8 @@
+[package]
+name = "calc00"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+eframe = "0.29" # O la versión estable que estés manejando en tu entorno
+egui = "0.29"
