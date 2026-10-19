@@ -1,0 +1,49 @@
+name: Deploy calculator to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust WebAssembly target
+        run: rustup target add wasm32-unknown-unknown
+      - name: Install wasm-pack
+        run: cargo install wasm-pack --version 0.15.0 --locked
+      - name: Build web application
+        run: wasm-pack build --target web --out-dir dist --out-name calc00 --release -- --locked
+      - name: Version offline cache
+        run: sed -i "s/calc00-v2/calc00-${GITHUB_SHA}/" dist/sw.js
+      - name: Prepare publication directory
+        run: |
+          mkdir _site
+          cp dist/index.html dist/manifest.json dist/sw.js dist/icon-*.png dist/calc00.js dist/calc00_bg.wasm _site/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

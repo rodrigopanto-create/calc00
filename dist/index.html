@@ -20,31 +20,63 @@
     }
   </style>
   <link rel="manifest" href="./manifest.json">
-<meta name="theme-color" content="#181818">
+  <meta name="theme-color" content="#181818">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="apple-touch-icon" href="./icon-192.png">
 </head>
 <body>
+  <p id="status" role="status" style="position: fixed; bottom: 0; left: 0; z-index: 1; margin: 0; padding: 8px; background: #181818; color: white; font: 14px sans-serif;"></p>
   <!-- El canvas requerido por egui/eframe para renderizar -->
   <canvas id="calc00_canvas"></canvas>
 
   <!-- Cargador del módulo WASM generado -->
   <script type="module">
-  import init, { start } from './calc00.js';
-
   async function main() {
+    const { default: init, start } = await import('./calc00.js');
     await init();
     // Inicializa el motor de egui apuntando al ID de tu canvas
     await start("calc00_canvas");
   }
 
-  main();
+  main().catch((error) => {
+    console.error('No se pudo iniciar la calculadora:', error);
+    document.getElementById('status').textContent = 'No se pudo cargar la calculadora. Revisa la conexión y recarga.';
+  });
 </script>
 
   <!-- Registro del Service Worker para persistencia offline -->
   <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js')
-        .then(() => console.log('Soberanía digital offline activada 🚗⚡'));
+    async function prepareOffline() {
+      const status = document.getElementById('status');
+      if (!window.isSecureContext || !('serviceWorker' in navigator)) {
+        status.textContent = 'El modo sin conexión requiere HTTPS o localhost y un navegador compatible.';
+        return;
+      }
+      status.textContent = 'Preparando modo sin conexión...';
+      const registration = await navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' });
+      const worker = registration.installing || registration.waiting || registration.active;
+      if (!worker) throw new Error('No se encontró el service worker.');
+      if (worker.state !== 'activated') {
+        await new Promise((resolve, reject) => {
+          worker.addEventListener('statechange', () => {
+            if (worker.state === 'activated') resolve();
+            if (worker.state === 'redundant') reject(new Error('Falló la instalación de la caché.'));
+          });
+        });
+      }
+      await navigator.serviceWorker.ready;
+      if (!navigator.serviceWorker.controller) {
+        await new Promise((resolve) => {
+          navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true });
+        });
+      }
+      console.info('calc00 está lista para usarse sin conexión.');
+      status.textContent = 'Lista sin conexión. Instálala desde el menú del navegador.';
     }
+    prepareOffline().catch((error) => {
+      console.error('No se pudo preparar el modo sin conexión:', error);
+      document.getElementById('status').textContent = 'No se pudo preparar el modo sin conexión. Recarga con conexión.';
+    });
   </script>
 </body>
 </html>
